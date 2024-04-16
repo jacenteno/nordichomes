@@ -1,0 +1,267 @@
+{% extends 'core/base.html' %}
+{% block title %}Cerrar Compra{% endblock %}
+{% block content %}
+<!--
+para cuando voy usar form pos normal.
+<form method="post" action="{% url 'start_order' %}">
+    {% csrf_token %}
+-->
+<div class="max-w-6xl mx-auto flex flex-wrap items-start py-6 px-6 xl:px-0">
+    <div class="products w-full lg:w-3/4">
+        <h1 class="mb-5 text-3xl">Checkout</h1>
+
+        <div class="w- full md:pr-6">
+            <div class="mb-6 p-6 bg-gray-100 rounded-xl">
+                <h2 class="mb-5 uppercase text-lg">shipping information</h2>
+                <div class="flex space-x-6">
+                    <div class="w-1/2 mb-4">
+                        <label class="inline-block mb-2">First Name</label>
+                        <input name="first_name" type="text" class="w-full p-5 rounded-xl"
+                            value="{{ request.user.first_name }}">
+                    </div>
+                    <div class="w-1/2 mb-4">
+                        <label class="inline-block mb-2">Last Name</label>
+                        <input name="last_name" type="text" class="w-full p-5 rounded-xl"
+                            value="{{ request.user.last_name }}">
+                    </div>
+
+                </div>
+                <div class="mb-4">
+                    <label class="inline-block mb-2">Address</label>
+                    <input name="address" type="text" class="w-full p-5 rounded-xl">
+                </div>
+                <div class="flex space-x-6">
+                    <div class="w-1/2 mb-4">
+                        <label class="inline-block mb-2">Zip Code</label>
+                        <input name="zipcode" type="text" class="w-full p-5 rounded-xl">
+                    </div>
+                    <div class="w-1/2 mb-4">
+                        <label class="inline-block mb-2">City/Place</label>
+                        <input name="place" type="text" class="w-full p-5 rounded-xl">
+                    </div>
+                </div>
+            </div>
+            <div class="mb-6 p-6 bg-gray-100 rounded-xl">
+                <h2 class="mb-5 uppercase text-lg">Contact information</h2>
+                <div class="mb-4">
+                    <label class="inline-block mb-2">Email</label>
+                    <input name="email" type="emial" class="w-full p-5 rounded-xl" value="{{ request.user.emial }}">
+                </div>
+                <div class="mb-4">
+                    <label class="inline-block mb-2">Phone</label>
+                    <input name="phone" type="phone" class="w-full p-5 rounded-xl">
+                </div>
+            </div>
+            <div class="mb-6 p-6 bg-gray-100 rounded-xl" id="errors">
+                <!--
+                <h2 class="mb-5 uppercase text-lg">Payment information</h2> -->
+                {% if errors %}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <strong class="font-bold">Error:</strong>
+                    <ul>
+                        {% for error in errors %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+    <div class="summary w-full md:w-1/4 p-6 bg-gray-100 rounded-xl mt-3">
+        <h2 class="uppercase text-lg mb-5">Summary</h2>
+        <div class="mb-6 flex justify-between">
+            <span class="font-semibold" id="total">Total</span>
+            <span>${{ cart.get_total_cost }}</span>
+        </div>
+
+        <div class="max-w-md mx-auto mt-10 bg-white p-8 border rounded-lg shadow-lg">
+            <h2 class="text-lg font-semibold mb-4">Checkout</h2>
+            <form>
+                <!-- Método de pago -->
+                <div class="mb-4">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Método de Pago</label>
+                        <div class="flex items-center">
+                            <input type="radio" id="pago_efectivo" name="pago" value="efectivo" class="mr-2">
+                            <label for="pago_efectivo" class="text-sm text-gray-700">Efectivo</label>
+                        </div>
+                        <div class="flex items-center mt-2">
+                            <input type="radio" id="pago_tarjeta" name="pago" value="tarjeta" class="mr-2">
+                            <label for="pago_tarjeta" class="text-sm text-gray-700">Tarjeta</label>
+                        </div>
+                        <div class="flex items-center mt-2">
+                            <input type="radio" id="pago_paypal" name="pago" value="paypal" class="mr-2">
+                            <label for="pago_paypal" class="text-sm text-gray-700">PayPal</label>
+                        </div>
+                        <div class="flex items-center mt-2">
+                            <input type="radio" id="pago_stripe" name="pago" value="stripe" class="mr-2">
+                            <label for="pago_stripe" class="text-sm text-gray-700">Strike</label>
+                        </div>
+                    </div>
+
+                    <!-- Botón de Pago -->
+                    <button type="submit" id="btnPagar" onclick="buy2(event)"
+                        class=" inline-block px-8 py-4 rounded-xl bg-purple-500 hover:bg-purple-700 text-white">
+                        Pagar
+                    </button>
+            </form>
+        </div>
+        <button id="btnConfirmarCheckout" data-pub-key="{{ pub_key }}" onclick="buy(event)"
+            class="hidden inline-block px-8 py-4 rounded-xl bg-purple-500 hover:bg-purple-700 text-white">Stripe Confirm
+        </button>
+        <!-- python manage.py runserver 192.168.0.8:8000 -->
+    </div>
+    <!-- </form> -->
+</div>
+{% endblock %}
+{% block scripts %}
+
+<script type="applications/javascript" src="https://js.stripe.com/v3"></script>
+<script>
+    const btnPagar = document.getElementById('btnPagar');
+    const btnConfirmarCheckout = document.getElementById('btnConfirmarCheckout');
+    const radios = document.querySelectorAll('input[name="pago"]');
+    radios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'stripe') {
+                btnConfirmarCheckout.classList.remove('hidden');
+                btnPagar.classList.add('hidden');
+            } else {
+                btnConfirmarCheckout.classList.add('hidden');
+                btnPagar.classList.remove('hidden');
+            }
+        });
+    });
+</script>
+<script>
+    let el = document.querySelector('#errors');
+
+    function validateForm(data) {
+        let errors = []
+
+        if (data.first_name === '') {
+            errors.push('First Name is required ')
+        }
+        if (data.last_name === '') {
+            errors.push('Last Name is required ')
+        }
+        if (data.email === '') {
+            errors.push('Email is required ')
+        }
+        if (data.phone === '') {
+            errors.push('phone is required ')
+        }
+        if (data.address === '') {
+            errors.push('Address is required ')
+        }
+        if (data.zipcode === '') {
+            errors.push('zipcode is required ')
+        }
+        if (data.pace === '') {
+            errors.push('Place is required ')
+        }
+        let html = '<ul>';
+        if (errors.length > 0) {
+            errors.forEach(errors => {
+                html += '<li>' + errors + '</li>';
+            })
+
+            el.innerHTML = html + '</ul>';
+
+        } else {
+            el.innerHTML = html + '<ul>';
+
+        }
+        return errors
+    }
+    function buy2(event) {
+        event.preventDefault();  //prevents the default submit action (which is to send the form data)
+        let data = {
+            'first_name': document.querySelector('input[name=first_name]').value,
+            'last_name': document.querySelector('input[name=last_name]').value,
+            'email': document.querySelector('input[name=email]').value,
+            'phone': document.querySelector('input[name=phone]').value,
+            'address': document.querySelector('input[name=address]').value,
+            'zipcode': document.querySelector('input[name=zipcode]').value,
+            'place': document.querySelector('input[name=place]').value,
+        }
+        let errors = validateForm(data)
+        if (errors.length) {
+            let html = '<ul>';
+            errors.forEach(error => {
+                html += '<li>' + error + '</li>';
+            });
+            el.innerHTML = html + '</ul>';
+        } else {
+            // Redirigir a la URL deseada
+            window.location.href = '/cart/success/';
+
+
+
+
+        }
+    }
+    function buy(event) {
+        event.preventDefault();  //prevents the default submit action (which is to send the form data)
+        let data = {
+            'first_name': document.querySelector('input[name=first_name]').value,
+            'last_name': document.querySelector('input[name=last_name]').value,
+            'email': document.querySelector('input[name=email]').value,
+            'phone': document.querySelector('input[name=phone]').value,
+            'address': document.querySelector('input[name=address]').value,
+            'zipcode': document.querySelector('input[name=zipcode]').value,
+            'place': document.querySelector('input[name=place]').value,
+        }
+        let errors = validateForm(data)
+        if (errors.length) {
+            let html = '<ul>';
+            errors.forEach(error => {
+                html += '<li>' + error + '</li>';
+            });
+            el.innerHTML = html + '</ul>';
+        } else {
+            let pub_keyDjango = '{{ pub_key }}';
+            console.log("Valor de p {{ pub_key }}", pub_keyDjango)
+            var pubKey = event.target.getAttribute('data-pub-key');
+            var stripe = Stripe("{{ pub_key }}");
+            console.log("valor de Pubkey", pubKey)
+
+            //var stripe;
+            try {
+                stripe = Stripe("{{ pub_key }}");
+            } catch (error) {
+                console.error("Error al inicializar Stripe:", error);
+            }
+
+
+            fetch('/order/start_order/', {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                credentials: 'same-origin', // or 'include', depending on your needs
+                body: JSON.stringify(data)
+            })
+
+                .then(function (response) {
+                    return response.json()
+                })
+                .then(function (session) {
+                    return stripe.redirectToCheckout({ sessionId: session.session.id })
+                })
+                .then(function (result) {
+                    if (result.error) {
+                        alert(result.error.message)
+                    }
+                })
+                .catch(function (error) {
+                    console.log("ERROR", error)
+                })
+        }
+    }
+</script>
+
+{% endblock %}
